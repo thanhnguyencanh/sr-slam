@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SR-SLAM · PAIRS Lab</title>
+<meta name="description" content="SR-SLAM: scene reliability-based RGB-D SLAM in diverse environments. Robotics and Autonomous Systems, 2026. Paper, video and results.">
+<meta property="og:title" content="SR-SLAM: Scene Reliability-Based RGB-D SLAM in Diverse Environments">
+<meta property="og:description" content="SR-SLAM · Robotics and Autonomous Systems 2026 · PAIRS Lab">
+<meta property="og:image" content="images/real-frame.jpg">
+<meta name="theme-color" content="#063a7a">
+<link rel="icon" href="https://pairs-lab.github.io/images/brand/pairs-lab-icon-32.png" type="image/png">
+<link rel="stylesheet" href="assets/style.css">
+<script>document.documentElement.classList.add("js")</script>
+<script src="assets/data.js" defer></script>
+<script src="assets/app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="wrap topbar-row">
+    <a class="lab" href="https://pairs-lab.github.io/"><img src="https://pairs-lab.github.io/images/brand/pairs-lab-horizontal.png" alt="PAIRS Lab" width="120" height="35"></a>
+    <nav class="toc" aria-label="Sections">
+      <a href="#abstract">Abstract</a><a href="#video">Video</a><a href="#method">Method</a><a href="#culling">Culling</a><a href="#results">Results</a><a href="#ablation">Ablation</a><a href="#real">Real world</a><a href="#cite">Cite</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<section class="hero hero-paper">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="venue"><span>Journal</span> Robotics and Autonomous Systems · 2026</p>
+      <h1>SR-SLAM</h1>
+      <p class="subtitle">Scene reliability-based RGB-D SLAM in diverse environments</p>
+      <p class="authors">
+        Haolan Zhang<sup>1</sup>,
+        Chenghao Li<sup>1</sup>,
+        <a href="https://thanhnguyencanh.github.io/">Thanh Nguyen Canh</a><sup>1</sup>,
+        Lijun Wang<sup>1</sup>,
+        <a href="https://www.jaist.ac.jp/robot/">Nak Young Chong</a><sup>1,2,*</sup>
+      </p>
+      <p class="affils"><sup>1</sup>Japan Advanced Institute of Science and Technology &nbsp; <sup>2</sup>Hanyang University &nbsp; <sup>*</sup>Corresponding author</p>
+      <div class="actions">
+        <a class="btn" href="https://doi.org/10.1016/j.robot.2025.105306">Paper <span aria-hidden="true">↗</span></a>
+        <a class="btn" href="https://arxiv.org/abs/2509.01111">arXiv <span aria-hidden="true">↗</span></a>
+        <a class="btn btn-solid" href="#video">Video <span aria-hidden="true">▶</span></a>
+      </div>
+    </div>
+    <figure class="teaser">
+      <img src="images/real-frame.jpg" alt="A real office scene: detected objects in green boxes, a moving person masked in red, features kept around the person, and the frame's scene-reliability score at the top left." width="1667" height="928">
+      <figcaption>Real scene: the moving person is masked, nearby static features are kept, and the frame gets a reliability score.</figcaption>
+    </figure>
+  </div>
+  <div class="wrap"><dl class="counters" id="headline"></dl></div>
+</section>
+
+<section class="block" id="abstract">
+  <div class="wrap two">
+    <div>
+      <p class="kicker">01 · Abstract</p>
+      <h2>How reliable is <em>this scene</em> for feature-based tracking?</h2>
+    </div>
+    <div class="prose">
+      <p>In feature-based SLAM, the quantity and quality of extracted features drive performance, and both vary across environments. Current approaches face two challenges: limited adaptability in dynamic feature culling and pose estimation, and insufficient environmental awareness in assessment and optimization.</p>
+      <p><strong>SR-SLAM</strong> is a scene reliability-based framework built on ORB-SLAM3. A <strong>unified scene reliability assessment</strong> combines several metrics with historical observations and guides the rest of the system: <strong>adaptive dynamic region selection</strong> with flexible geometric constraints, a <strong>depth-assisted self-adjusting clustering</strong> (adaptive DBSCAN) for dynamic feature removal, <strong>reliability-aware pose refinement</strong> that brings in a direct method when features are insufficient, and <strong>reliability-based keyframe selection</strong> with frame-weighted optimization.</p>
+      <p>On public datasets and in real-world scenarios, SR-SLAM improves accuracy by up to 90% over its ORB-SLAM3 baseline. It is not the most accurate method everywhere: the results explorer below shows each sequence, including those where a baseline wins.</p>
+    </div>
+  </div>
+</section>
+
+<section class="block alt" id="video">
+  <div class="wrap">
+    <p class="kicker">02 · Video</p>
+    <h2>SR-SLAM in four minutes</h2>
+    <div class="yt" id="yt" data-id="-lRCkmRh344">
+      <button type="button" class="yt-play" aria-label="Play the SR-SLAM video on YouTube">
+        <img src="images/video-poster.jpg" alt="" loading="lazy">
+        <span class="yt-btn" aria-hidden="true">▶</span>
+        <span class="yt-note">Plays from YouTube (youtube-nocookie.com) when you click</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="method">
+  <div class="wrap">
+    <p class="kicker">03 · Method</p>
+    <h2>One reliability score guides the whole pipeline</h2>
+    <figure class="figure"><img src="images/overview.jpg" alt="SR-SLAM overview: RGB-D frames go to a YOLOv8 detection thread, the scene reliability assessment and ORB-SLAM3 tracking; reliability selects geometric constraints for potential dynamic regions, chooses depth-assisted adaptive DBSCAN or direct removal, triggers pose refinement, and drives new keyframe selection and frame-weighted optimization." width="1669" height="938" loading="lazy"><figcaption>Fig. 1: overview of SR-SLAM.</figcaption></figure>
+    <ol class="steps">
+      <li><b>1</b><h3>Detection thread</h3><p>SR-SLAM builds on ORB-SLAM3 and adds a YOLOv8 detection thread that runs alongside tracking.</p></li>
+      <li><b>2</b><h3>Scene reliability</h3><p>Each frame is scored from detection confidence, spatial distribution, feature quality and depth quality, weighted by its change from a reference frame.</p></li>
+      <li><b>3</b><h3>Adaptive dynamic regions</h3><p>Epipolar constraints are added only in GOOD (reliable) scenes; otherwise LK optical flow alone marks anomalous features.</p></li>
+      <li><b>4</b><h3>Dynamic feature removal</h3><p>Depth-assisted adaptive DBSCAN in low motion, direct removal in high motion.</p></li>
+      <li><b>5</b><h3>Pose refinement</h3><p>In BAD frames a direct method refines the pose, fused with the feature-based pose by a weight from the motion residual.</p></li>
+      <li><b>6</b><h3>Keyframes and weighting</h3><p>Reliability decides new keyframes and weights each frame in the optimization, instead of weighting single features.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="block alt" id="culling">
+  <div class="wrap">
+    <p class="kicker">04 · Dynamic culling</p>
+    <h2>Remove the people, keep the features around them</h2>
+    <figure class="figure"><img src="images/culling-strategy.jpg" alt="Dynamic culling strategy: in low motion, points are clustered by depth and an adaptive DBSCAN picks the final dynamic regions; in high motion, potential dynamic points are removed directly." width="1619" height="326" loading="lazy"><figcaption>Fig. 2: black points are static features, red points potential dynamic features; black circles are depth clusters, red circles the dynamic regions found by the depth-assisted adaptive DBSCAN.</figcaption></figure>
+    <figure class="figure"><img src="images/culling-comparison.jpg" alt="Feature removal compared in a low dynamic scene (top) and a moderately dynamic scene (bottom): proportion-based, K-means, convex hull, standard DBSCAN and depth-assisted adaptive DBSCAN." width="1619" height="491" loading="lazy"><figcaption>Fig. 3: from left to right, proportion-based, K-means, convex hull, standard DBSCAN and the depth-assisted adaptive DBSCAN. Rigid cluster shapes remove static features around the people; standard DBSCAN keeps them but leaves dynamic points on the people.</figcaption></figure>
+  </div>
+</section>
+
+<section class="block" id="results">
+  <div class="wrap">
+    <p class="kicker">05 · Results</p>
+    <h2>Accuracy on TUM, BONN and OpenLORIS</h2>
+    <p class="lead">Pick a benchmark, a metric and a sequence. On TUM, SR-SLAM is compared with its ORB-SLAM3 baseline and three ORB-SLAM3-based dynamic SLAM methods; on BONN and OpenLORIS with the dynamic SLAM systems the paper reports.</p>
+    <div class="tabs" role="tablist" id="bench-tabs"></div>
+    <div class="metric-row" id="metric-tabs" role="group" aria-label="Metric"></div>
+    <div class="metric-row" id="seq-tabs" role="group" aria-label="Sequence"></div>
+    <figure class="chart" id="res-chart"><figcaption><strong id="res-title"></strong><span id="res-sub"></span></figcaption><div class="bars"></div></figure>
+    <p class="verdict" id="res-verdict" role="status"></p>
+    <div class="table-scroll"><table class="stage-table" id="res-table"></table></div>
+    <div class="two-figs">
+      <figure class="figure"><img src="images/tum-trajectories.jpg" alt="ATE plots on five TUM sequences: ORB-SLAM3 (top) and SR-SLAM (bottom); ground truth black, estimate blue, error red." width="1622" height="536" loading="lazy"><figcaption>Fig. 4: TUM, ORB-SLAM3 (top) vs SR-SLAM (bottom). Black: ground truth; blue: estimate; red: error.</figcaption></figure>
+      <figure class="figure"><img src="images/openloris-trajectories.jpg" alt="2D trajectories of ORB-SLAM3, OVD-SLAM, SG-SLAM and SR-SLAM on eight OpenLORIS sequences." width="1614" height="646" loading="lazy"><figcaption>Fig. 7: OpenLORIS trajectories. Black: ground truth; blue ORB-SLAM3, yellow OVD-SLAM, green SG-SLAM, red SR-SLAM. SG-SLAM fails on cafe1-2, home1-2 and corridor1-1.</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section class="block alt" id="ablation">
+  <div class="wrap">
+    <p class="kicker">06 · Ablation and runtime</p>
+    <h2>What each module adds, and what it costs</h2>
+    <div class="metric-row" id="abl-tabs" role="group" aria-label="Ablation sequence"></div>
+    <figure class="chart" id="abl-chart"><figcaption><strong id="abl-title"></strong><span>m · lower is better · Table 10 (TUM) · SP = reliability assessment + pose refinement, D = dynamic culling, B = keyframe selection and weighted optimization</span></figcaption><div class="bars"></div></figure>
+    <p class="note" id="abl-note"></p>
+    <figure class="chart" id="rt-chart"><figcaption><strong>Overall runtime per frame</strong><span>s / frame · average over six TUM sequences, same hardware (Table 12) · lower is faster</span></figcaption><div class="bars"></div></figure>
+    <p class="note">SR-SLAM runs at about 14 FPS, slower than ORB-SLAM3, OVD-SLAM and SG-SLAM; detection with geometric constraints is the main cost.</p>
+  </div>
+</section>
+
+<section class="block" id="real">
+  <div class="wrap">
+    <p class="kicker">07 · Real world</p>
+    <h2>Fixed camera and mobile robot, Intel RealSense D455</h2>
+    <p class="lead">A fixed camera should not move, so any estimated motion is drift. Pick a scene and a drift measure (Table 13).</p>
+    <div class="metric-row" id="drift-tabs" role="group" aria-label="Scene"></div>
+    <div class="metric-row" id="drift-metric" role="group" aria-label="Drift measure"></div>
+    <figure class="chart" id="drift-chart"><figcaption><strong id="drift-title"></strong><span>mm · lower is better</span></figcaption><div class="bars"></div></figure>
+    <p class="verdict" id="drift-verdict" role="status"></p>
+    <figure class="figure figure-narrow"><img src="images/real-setup.jpg" alt="Real experimental settings: a fixed RealSense camera on a tripod and its scene (top), and the mobile robot with the camera and its scene (bottom)." width="1200" height="1095" loading="lazy"><figcaption>Fig. 10: fixed-camera (top) and mobile-robot (bottom) setups. On the robot, only SR-SLAM produces a continuous straight-line trajectory (Fig. 12 of the paper).</figcaption></figure>
+  </div>
+</section>
+
+<section class="block alt" id="cite">
+  <div class="wrap">
+    <p class="kicker">08 · Cite</p>
+    <h2>Citation</h2>
+    <div class="bib"><pre id="bibtex">@article{zhang2026srslam,
+  title   = {{SR-SLAM}: Scene reliability-based {RGB-D} {SLAM} in diverse environments},
+  author  = {Zhang, Haolan and Li, Chenghao and Canh, Thanh Nguyen and Wang, Lijun and Chong, Nak Young},
+  journal = {Robotics and Autonomous Systems},
+  volume  = {197},
+  pages   = {105306},
+  year    = {2026},
+  doi     = {10.1016/j.robot.2025.105306}
+}</pre><button type="button" class="copy" id="copy-bib">Copy</button></div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-row">
+    <p>© 2026 the authors · <a href="https://pairs-lab.github.io/">PAIRS Lab</a> · Results shown are from the published article (Robotics and Autonomous Systems 197, 105306).</p>
+    <a href="#main">Back to top ↑</a>
+  </div>
+</footer>
+</body>
+</html>
